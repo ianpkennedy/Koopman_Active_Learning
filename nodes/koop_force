@@ -1,0 +1,150 @@
+#!/usr/bin/env python
+
+
+import rospy
+
+from geometry_msgs.msg import Twist, Vector3, Quaternion, Wrench
+from gazebo_msgs.msg import LinkStates
+from tf_conversions import transformations
+
+from lqr import control
+from lqr.control_koop import Koop_LQR
+from lqr.control_koop import test_koop
+
+import csv
+
+from cartpole.msg import Data
+
+
+"""
+Node publishes a cmd_vel command to balance the pole
+Publishers:
+    cmd_vel is of type geometry_msgs/Twist
+
+
+Subscribers:
+    gazebo/link_states
+    
+"""
+
+
+class ControlK():
+    def __init__(self):
+        
+        self.iter = 0
+        self.initial_pub = True
+        self.training_cycles = rospy.get_param('freq')/20 - 2
+        self.m_cart = rospy.get_param('m_cart')
+        self.m_rod = rospy.get_param('m_rod')
+        self.m_ball = rospy.get_param('m_ball')
+        self.l_rod = rospy.get_param('l_rod')
+        self.r_ball = rospy.get_param('r_ball')
+        self.dt = rospy.get_param('dt')
+        
+        self.cart_pos = 0.
+        self.cart_vel = 0.
+        self.last_cmd = 0.
+        self.rod_vel = 0.
+
+        self.link_angle_quat = [0, 0, 0, 1]
+        self.link_angle_rpy = [0, 0, 0]
+        self.timer = rospy.Timer(rospy.Duration(self.dt),self.timer_callback)
+        self.cmd_pub = rospy.Publisher('/force', Wrench, queue_size=10000)
+        self.data_force_pub = rospy.Publisher('/force_data', Data, queue_size=10000)
+        self.data_x_pub = rospy.Publisher('/x_data', Data, queue_size=10000)
+        self.data_xdot_pub = rospy.Publisher('/xdot_data', Data, queue_size=10000)
+        self.data_theta_pub = rospy.Publisher('/theta_data', Data, queue_size=10000)
+        self.data_thetadot_pub = rospy.Publisher('/thetadot_data', Data, queue_size=10000)
+
+        self.link_sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.link_state_callback)
+        self.koopman = Koop_LQR(self.dt, 4, 1,self.cart_pos, self.link_angle_rpy[1], 0, 0, 0, self.training_cycles)
+        
+        test_koop()
+        self.koopman.dummy_method()
+        self.round = 0
+ 
+    def timer_callback(self,event):
+        """
+        Callback for geometry_msgs/Wrench publishing
+        Args:
+            None
+        """
+        print('outside... iteration: ', self.iter)
+        self.round += 1
+        # print('initial pub status: ', self.initial_pub)
+        if self.iter < self.training_cycles:
+            self.iter = self.koopman.train_model(self.cart_pos,self.cart_vel,self.link_angle_rpy[1],self.rod_vel,self.last_cmd)
+            if self.initial_pub:
+                self.excite_system()
+            if not self.initial_pub:
+                u = self.koopman.compute_cmd(self.cart_pos,self.cart_vel,self.link_angle_rpy[1], self.rod_vel,self.last_cmd, self.K)
+                self.last_cmd = u
+                self.cmd_pub.publish(  Wrench(Vector3(u,0,0),Vector3(0,0,0))  )
+                f = Data()
+                f.data = u
+                self.data_force_pub.publish(f)
+        
+        # print('self.iter before lqr computation clause: ', self.iter)      
+        if self.iter == 0 and self.round > 5:
+            
+            print('Calculating LQR gain matrix: ')
+            self.K = self.koopman.computeLQR()
+            self.iter = 0
+            self.initial_pub = False
+            
+        
+
+    
+    def link_state_callback(self,data):
+        """
+        The pose callback subscribes to turtle1/pose, and publishes it in the odom format
+        Args:
+            data (Gazebo/LinkStates):
+                string[]: names of links
+                pose[]: pose of links
+                twist[]: twist of links
+        """
+        
+        self.link_angle_quat = [data.pose[2].orientation.x, data.pose[2].orientation.y, data.pose[2].orientation.z, data.pose[2].orientation.w]
+        self.link_angle_rpy = transformations.euler_from_quaternion(self.link_angle_quat) #source 03/31: https://github.com/ros/geometry/issues/109        
+        self.cart_pos = data.pose[2].position.x
+
+        self.cart_vel = data.twist[2].linear.x
+        self.rod_vel = data.twist[2].angular.y
+        
+        self.data_x_pub.publish(self.cart_pos)
+        self.data_xdot_pub.publish(self.cart_vel)
+        self.data_theta_pub.publish(self.link_angle_rpy[1])
+        self.data_thetadot_pub.publish(self.rod_vel)
+
+        
+        # print('angle rpy: ', self.link_angle_rpy)
+        # print('cart pos: ', self.cart_pos)
+        # print('rod vel: ', self.rod_vel)
+        # print('cart vel: ', self.cart_vel)
+        
+    def excite_system(self):
+        """
+        Call back to excite system by publishing cmd_vel commands during the first training iteration
+        """
+
+        if self.iter % 1000 < 500:
+            # print('positive initial excitation ')
+            self.cmd_pub.publish(  Wrench(Vector3(0.001,0,0),Vector3(0,0,0))  )
+            self.last_cmd = 0.001
+        else:
+            # print('negative initial excitation ')
+            self.cmd_pub.publish(  Wrench(Vector3(-0.001,0,0),Vector3(0,0,0))  )
+            self.last_cmd = -0.001
+
+def main():
+    """
+    Main function
+    """
+    rospy.init_node('control_koop')
+    control = ControlK()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
+    

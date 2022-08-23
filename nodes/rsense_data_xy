@@ -1,0 +1,133 @@
+#!/usr/bin/env python
+
+import rospy
+
+import tf2_ros
+from cartpole.msg import Data
+
+
+
+
+class Cam():
+    def __init__(self):
+        
+        self.buf = tf2_ros.Buffer()
+        self.listen = tf2_ros.TransformListener(self.buf)
+        self.timer = rospy.Timer(rospy.Duration(1./10),self.timer_callback)
+  
+        self.data_x_pub = rospy.Publisher('/x_data', Data, queue_size=10000)
+        self.data_xvel_pub = rospy.Publisher('/xdot_data', Data, queue_size=10000)
+        
+        self.data_x_odom_pub = rospy.Publisher('/x_odom_data', Data, queue_size=10000)
+        self.data_x_vel_odom_pub = rospy.Publisher('/xdot_odom_data', Data, queue_size=10000)
+
+        self.data_y_pub = rospy.Publisher('/y_data', Data, queue_size=10000)
+        self.data_yvel_pub = rospy.Publisher('/ydot_data', Data, queue_size=10000)
+
+        self.data_y_odom_pub = rospy.Publisher('/y_odom_data', Data, queue_size=10000)
+        self.data_y_vel_odom_pub = rospy.Publisher('/ydot_odom_data', Data, queue_size=10000)
+
+        self.timer_data = rospy.Timer(rospy.Duration(1./310), self.timer_data_callback)
+
+        self.x = 0.
+        self.x_old = 0.
+        self.x_first = 0.
+        
+        self.x_odom = 0.
+        self.x_odom_old = 0.
+        self.x_odom_first = 0.
+        
+        self.y = 0.
+        self.y_old = 0.
+        self.y_first = 0.
+
+        self.y_odom = 0.
+        self.y_odom_old = 0.
+        self.y_odom_first = 0.
+        
+        self.xdot = 0.
+        self.xdot_odom = 0.
+        self.ydot = 0.
+        self.ydot_odom = 0.
+        
+        self.first = True
+        self.first_odom = True
+
+    
+        
+
+    def timer_callback(self,event):
+        """
+        Callback for getting camera data
+        Args:
+            None
+        """ 
+        
+        odom = self.buf.lookup_transform("odom", "blue-base_footprint", rospy.Time())
+        if self.first_odom:
+            self.x_odom_first = odom.transform.translation.x
+            self.y_odom_first = odom.transform.translation.y
+            self.first_odom = False
+        self.x_odom_old = self.x_odom
+        self.x_odom = odom.transform.translation.x - self.x_odom_first
+        self.y_odom_old = self.y_odom
+        self.y_odom = odom.transform.translation.y - self.y_odom_first
+        self.xdot_odom = (self.x_odom-self.x_odom_old)/(1/10.)
+        self.ydot_odom = (self.y_odom-self.y_odom_old)/(1/10.)
+
+    
+        try:
+            query = self.buf.lookup_transform("camera_color_optical_frame", "tag_10", rospy.Time())
+            
+            if self.first:
+                self.x_first = query.transform.translation.x
+                self.first = False
+                self.y_first = query.transform.translation.y
+            
+            self.y_old = self.y
+            self.x_old = self.x  
+            self.x = query.transform.translation.x - self.x_first
+            self.y = query.transform.translation.y - self.y_first
+            self.xdot = (self.x-self.x_old)/(1./10.)
+            self.ydot = (self.y - self.y_old)/(1./10.)
+            
+        except:
+            print('april tag transform not available')
+        print('x:', self.x)
+        print('xdot:', self.xdot)
+        print('y:', -self.y)
+        print('ydot:', -self.ydot)
+        print('xodom: ', self.x_odom)
+        print('xdot_odom: ', self.xdot_odom)
+        
+        print('yodom: ', self.y_odom)
+        print('ydot_odom: ', self.ydot_odom)
+        
+    def timer_data_callback(self, event):
+        """X, Y data publisher 
+
+        Args:
+            None
+        """
+        self.data_y_pub.publish(-self.y)
+        self.data_yvel_pub.publish(-self.ydot)
+        
+        self.data_x_pub.publish(self.x)
+        self.data_xvel_pub.publish(self.xdot)
+        
+        self.data_x_odom_pub.publish(self.x_odom)
+        self.data_y_odom_pub.publish(self.y_odom)
+        
+        self.data_x_vel_odom_pub.publish(self.xdot_odom)
+        self.data_y_vel_odom_pub.publish(self.ydot_odom)    
+                
+def main():
+    """
+    Main function
+    """
+    rospy.init_node('rsense')
+    cam = Cam()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()

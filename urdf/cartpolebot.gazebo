@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+
+<robot name="cartpolebot_gazebo" xmlns:xacro="https://ros.org/wiki/xacro">
+    <xacro:property name="yaml" value="$(find cartpole)/config/cart_params.yaml"/>
+    <xacro:property name="param" value="${xacro.load_yaml(yaml)}"/>
+    <xacro:property name="freq" value="${param['freq']}"/>
+    <xacro:property name="r_wheel" value="${param['r_wheel']}"/>
+
+    <gazebo reference="platform">
+     <material>Gazebo/Green</material>
+     <mu1>0</mu1>
+     <mu2>0</mu2>
+    </gazebo>
+    
+
+    <gazebo reference="rod">
+     <material>Gazebo/Blue</material>
+     <mu1>0</mu1>
+     <mu2>0</mu2>
+    </gazebo>
+
+    <gazebo reference="ball">
+        <material>Gazebo/Red</material>
+        <mu1>0</mu1>
+        <mu2>0</mu2>
+       </gazebo>
+
+    <gazebo reference="front_wheel">
+     <material>Gazebo/Red</material>
+     <mu1>999</mu1>
+     <mu2>999</mu2>
+    </gazebo>
+
+
+    <gazebo reference="back_wheel">
+     <material>Gazebo/Red</material>
+     <mu1>999</mu1>
+     <mu2>999</mu2>
+    </gazebo>
+
+    <gazebo>
+      <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
+       <rosDebugLevel>na</rosDebugLevel>
+       <alwaysOn>true</alwaysOn>
+       <updateRate>${freq}</updateRate>
+       <leftJoint>front_joint</leftJoint>
+       <rightJoint>back_joint</rightJoint>
+       <wheelSeparation>${0.2+0.2}</wheelSeparation>
+       <wheelDiameter>${2*r_wheel}</wheelDiameter>
+       <wheelTorque>20000</wheelTorque>
+       <commandTopic>/cmd_vel</commandTopic>
+       <odometryTopic>/odom</odometryTopic>
+       <odometryFrame>odom</odometryFrame>
+       <robotBaseFrame>map</robotBaseFrame>
+       <publishWheelTF>false</publishWheelTF>
+       <publishOdomTF>true</publishOdomTF>
+       <publishWheelJointState>true</publishWheelJointState>
+       <wheelAcceleration>true</wheelAcceleration>
+       <odometrySource>world</odometrySource>
+       <publishTf>1</publishTf>
+   </plugin>
+    </gazebo>   
+
+</robot>

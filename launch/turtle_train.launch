@@ -1,0 +1,24 @@
+    <launch>
+
+    <rosparam file="$(find cartpole)/config/turtle_params.yaml" command="load" />
+
+    <group if="$(eval mode=='fourier')">
+        <param name="basis" type="str" value="fourier"/>
+        <node pkg="cartpole" type="train_turtle_simple" name="train_turtle_simple" output="screen">
+        </node>
+    </group>
+
+    <group if="$(eval mode=='ticks')">
+        <param name="basis" type="str" value="fourier"/>
+        <node pkg="cartpole" type="train_turtle_simple_ticks_cmd" name="train_turtle_simple_ticks_cmd" output="screen">
+        </node>
+    </group>
+
+    <group if="$(eval mode=='poly')">
+        <param name="basis" type="str" value="poly"/>
+        <node pkg="cartpole" type="train_turtle_simple" name="train_turtle_simple" output="screen">
+        </node>
+    </group>
+
+
+</launch>

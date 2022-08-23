@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+
+import rospy
+
+from geometry_msgs.msg import Wrench, Twist, Vector3, Quaternion
+from gazebo_msgs.msg import LinkStates
+from tf_conversions import transformations
+
+from cartpole.msg import Data
+from lqr.koop_train import Koop
+
+
+class Train():
+    def __init__(self):
+        self.iter = 0
+        self.initial_pub = True
+        self.dt = rospy.get_param('dt')
+
+        self.cart_pos = 0.
+        self.cart_vel = 0.
+        self.last_cmd = 0.
+        self.rod_vel = 0.
+        self.force = 0.
+
+        self.link_angle_quat = [0, 0, 0, 1]
+        self.link_angle_rpy = [0, 0, 0]
+        self.last_cmd = 0.
+
+    
+        self.cmd_sub = rospy.Subscriber('/force', Wrench, self.force_callback)
+        self.link_sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.link_state_callback)
+
+
+        self.koopman = Koop(self.dt, 4, 1,self.cart_pos, self.link_angle_rpy[1], 0, 0, 0)
+
+
+        self.data_x_pub = rospy.Publisher('/x_data', Data, queue_size=10000)
+        self.data_xdot_pub = rospy.Publisher('/xdot_data', Data, queue_size=10000)
+        self.data_theta_pub = rospy.Publisher('/theta_data', Data, queue_size=10000)
+        self.data_thetadot_pub = rospy.Publisher('/thetadot_data', Data, queue_size=10000)
+    
+    
+    def force_callback(self,data):
+        self.last_cmd = data.force.x   
+        
+           
+    def link_state_callback(self,data):
+        """
+        The pose callback subscribes to turtle1/pose, and publishes it in the odom format
+        Args:
+            data (Gazebo/LinkStates):
+                string[]: names of links
+                pose[]: pose of links
+                twist[]: twist of links
+        """
+        
+        self.link_angle_quat = [data.pose[2].orientation.x, data.pose[2].orientation.y, data.pose[2].orientation.z, data.pose[2].orientation.w]
+        self.link_angle_rpy = transformations.euler_from_quaternion(self.link_angle_quat) #source 03/31: https://github.com/ros/geometry/issues/109        
+        print('angle: ', self.link_angle_rpy)
+        self.cart_pos = data.pose[2].position.x
+        self.cart_vel = data.twist[2].linear.x
+        self.rod_vel = data.twist[2].angular.y
+        
+        self.data_x_pub.publish(self.cart_pos)
+        self.data_xdot_pub.publish(self.cart_vel)
+        self.data_theta_pub.publish(self.link_angle_rpy[1])
+        self.data_thetadot_pub.publish(self.rod_vel)
+
+        self.koopman.train_model(self.cart_pos,self.cart_vel,self.link_angle_rpy[1],self.rod_vel,self.last_cmd)
+        self.koopman.calculateK()
+        
+        
+
+
+def main():
+    """
+    Main function
+    """
+    rospy.init_node('control_norm')
+    control = Train()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()

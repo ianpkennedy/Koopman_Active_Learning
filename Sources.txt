@@ -1,0 +1,17 @@
+https://answers.gazebosim.org//question/24202/urdf-model-falls-through-the-ground/
+http://wiki.ros.org/pr2_gazebo_plugins/Tutorials/Attaching%20a%20GazeboRosForce%20pugin%20to%20Objects%20in%20Simulation
+https://pythonexamples.org/python-if-not/
+https://python-control.readthedocs.io/en/latest/generated/control.lqr.html
+https://github.com/i-abr/mpc-koopman
+https://github.com/i-abr/active-learning-koopman
+https://github.com/tonylitianyu/Data-Driven-Control-Koopman
+https://github.com/Raihan-Seraj/Control-of-Cartpole/blob/master/src/cartpole_learn.py
+https://danielpiedrahita.wordpress.com/portfolio/cart-pole-control/
+https://www.ashwinnarayan.com/post/cartpole-dynamics/
+http://www.matthewpeterkelly.com/tutorials/cartPole/index.html
+https://coneural.org/florian/papers/05_cart_pole.pdf
+https://metr4202.uqcloud.net/tpl/t8-Week13-pendulum.pdf
+https://github.com/tonylitianyu/Data-Driven-Control-Koopman
+http://hyperphysics.phy-astr.gsu.edu/hbase/icyl.html
+http://hyperphysics.phy-astr.gsu.edu/hbase/mi2.html
+http://hyperphysics.phy-astr.gsu.edu/hbase/mi2.html

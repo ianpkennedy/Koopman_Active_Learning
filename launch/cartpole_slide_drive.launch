@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="mode" default="control" doc="control aproach"/>
+
+    <rosparam file="$(find cartpole)/config/cart_params.yaml" command="load" />
+
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+  
+    <group if="$(eval mode=='control')">
+        <node pkg="cartpole" type="control_norm_force" name="control_norm_force" output="screen">
+            
+        </node>
+    </group>
+
+    <group if="$(eval mode=='koop')">
+        <node pkg="cartpole" type="koop_force" name="koop_force" output="screen">
+            
+        </node>
+    </group>
+
+    <group if="$(eval mode=='tele')">
+        <node pkg="cartpole" type="koopman_train" name="koop_train" output="screen">
+        </node>
+        <!-- <node pkg="cartpole" type="teleop_force" name="teleop_force">
+        </node> -->
+
+    </group>    
+   
+    <node pkg="joint_state_publisher" type="joint_state_publisher" name="joint_state_publisher"/> 
+
+    <param name="robot_description" command="$(find xacro)/xacro $(find cartpole)/urdf/cartpoleslide.urdf.xacro" />
+
+    <include file="$(find joint_state_controller)/joint_state_controller.launch">
+
+  </include>
+
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="world_name" value="$(find cartpole)/world/simple.world"/>
+        <arg name="paused" value="true"/>
+        <arg name="use_sim_time" value="true"/>
+  </include>
+  <!-- think about a way to set the time step too 100/s in launch file 
+    03/13: https://www.reddit.com/r/ROS/comments/j7p27p/gazebo_sim_running_too_slow/
+    -->
+
+    <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find cartpole)/cartpole_view.rviz" required="true"/> -->
+
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+    args="-urdf -param robot_description -model cartpoleslide -z 0.0" />
+
+</launch>

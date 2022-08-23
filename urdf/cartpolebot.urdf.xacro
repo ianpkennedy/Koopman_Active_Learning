@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+
+<robot name="cartpolebot" xmlns:xacro="https://ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find cartpole)/urdf/cartpolebot.gazebo"/>
+
+    <xacro:property name="yaml" value="$(find cartpole)/config/cart_params.yaml"/>
+    <xacro:property name="param" value="${xacro.load_yaml(yaml)}"/>
+
+    <xacro:property name="m_cart" value="${param['m_cart']}"/>
+    <xacro:property name="l_cart" value="${param['l_cart']}"/>
+    <xacro:property name="w_cart" value="${param['w_cart']}"/>
+    <xacro:property name="t_cart" value="${param['t_cart']}"/>
+
+    <xacro:property name="m_wheel" value="${param['m_wheel']}"/>
+    <xacro:property name="r_wheel" value="${param['r_wheel']}"/>
+    <xacro:property name="l_wheel" value="${param['l_wheel']}"/>
+
+    <xacro:property name="m_rod" value="${param['m_rod']}"/>
+    <xacro:property name="r_rod" value="${param['r_rod']}"/>
+    <xacro:property name="l_rod" value="${param['l_rod']}"/>
+
+    <xacro:property name="m_ball" value="${param['m_ball']}"/>
+    <xacro:property name="r_ball" value="${param['r_ball']}"/>
+
+
+
+    <link name="map"/>
+
+    <link name="platform">
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="${l_cart} ${w_cart} ${t_cart}"/>
+            </geometry>
+            <material name ="green">
+                <color rgba="0 1 0 1"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <box size="${l_cart} ${w_cart} ${t_cart}"/>
+            </geometry>
+            <material name ="green">
+                <color rgba="0 1 0 1"/>
+            </material>            
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="${m_cart}"/>
+            <inertia ixx="${(1/12)*m_cart*(w_cart**2+t_cart**2)}" ixy="0.0" ixz="0.0" iyy="${(1/12)*m_cart*(w_cart**2+t_cart**2)}" iyz="0.0" izz="${(1/12)*m_cart*(w_cart**2+t_cart**2)}"/>
+        </inertial>
+    </link>
+    
+    <link name="front_wheel">
+        <visual>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_wheel}" length="${l_wheel}"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1 0 0 1"/>          
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_wheel}" length="${l_wheel}"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1 0 0 1"/>          
+            </material>            
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="${m_wheel}"/>
+           <inertia ixx="${0.25*m_wheel*r_wheel**2 + (1/12)*m_wheel*l_wheel**2}" ixy="0.0" ixz="0.0" iyy="${0.25*m_wheel*r_wheel**2 + (1/12)*m_wheel*l_wheel**2}" iyz="0.0" izz="${0.5*m_wheel*r_wheel**2}"/>
+        </inertial>
+    </link>
+
+    <link name="back_wheel">
+        <visual>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_wheel}" length="${l_wheel}"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1.0 0.0 0.0 1.0"/>          
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_wheel}" length="${l_wheel}"/>
+            </geometry>
+            <material name="red">
+                <color rgba="1 0 0 1"/>          
+            </material>            
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="${m_wheel}"/>
+            <inertia ixx="${0.25*m_wheel*r_wheel**2 + (1/12)*m_wheel*l_wheel**2}" ixy="0.0" ixz="0.0" iyy="${0.25*m_wheel*r_wheel**2 + (1/12)*m_wheel*l_wheel**2}" iyz="0.0" izz="${0.5*m_wheel*r_wheel**2}"/>
+        </inertial>
+    </link>
+
+    <link name="rod">
+        <visual>
+            <origin xyz="0 0 ${l_rod/2+t_cart/2}" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_rod}" length="${l_rod}"/>
+            </geometry>
+            <material name="brown">
+                <color rgba="1.0 1.0 1.0 1.0"/>          
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 ${l_rod/2+t_cart/2}" rpy = "0 0 0"/>
+            <geometry>
+                <cylinder radius="${r_rod}" length="${l_rod}"/>
+            </geometry>
+            <material name="brown">
+                <color rgba="1 1 1 1"/>          
+            </material>            
+        </collision>
+        <inertial>
+            <origin xyz="0 0 1" rpy="0 0 0"/>
+            <mass value="${m_rod}"/>
+           <inertia ixx="${0.25*m_rod*r_rod**2 + (1/12)*m_rod*l_rod**2}" ixy="0.0" ixz="0.0" iyy="${0.25*m_rod*r_rod**2 + (1/12)*m_rod*l_rod**2}" iyz="0.0" izz="${0.5*m_rod*r_rod**2}"/>
+        </inertial>
+    </link>
+
+    <link name="ball">
+        <visual>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <sphere radius="${r_ball}"/>
+            </geometry>
+            <material name="brown">
+                <color rgba="1.0 1.0 1.0 1.0"/>          
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="0 0 0" rpy = "0 0 0"/>
+            <geometry>
+                <sphere radius="${r_ball}"/>
+            </geometry>
+            <material name="brown">
+                <color rgba="1 1 1 1"/>          
+            </material>            
+        </collision>
+        <inertial>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <mass value="${m_ball}"/>
+           <inertia ixx="${0.4*m_ball*r_ball**2}" ixy="0.0" ixz="0.0" iyy="${0.4*m_ball*r_ball**2}" iyz="0.0" izz="${0.4*m_ball*r_ball**2}"/>
+        </inertial>
+    </link>
+
+    <joint name="ball_joint" type="fixed">
+        <parent link="rod"/>
+        <child link="ball"/>
+        <origin xyz="0 0 ${l_rod+r_ball+t_cart/2}" rpy="0 0 0"/>
+        <axis xyz="0 0 0"/>
+    </joint>
+
+    <joint name="pole_joint" type="revolute">
+        <limit lower="-0.78" upper="0.78" effort="1000.0" velocity="10000.0"/>
+        <parent link="platform"/>
+        <child link="rod"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+    </joint>
+
+
+
+    <joint name="base_joint" type="fixed">
+        <parent link="map"/>
+        <child link="platform"/>
+        <origin xyz="0 0 ${2*r_wheel+t_cart/2}" rpy="0 0 0"/>
+        <axis xyz="0 0 0"/>
+    </joint>
+
+    <joint name="front_joint" type="continuous">
+        <parent link="platform"/>
+        <child link="front_wheel"/>
+        <origin xyz="0.2 0 -${t_cart/2+r_wheel}" rpy="${-pi/2} 0 0"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+
+    <joint name="back_joint" type="continuous">
+        <parent link="platform"/>
+        <child link="back_wheel"/>
+        <origin xyz="-0.2 0 -${t_cart/2+r_wheel}" rpy="${-pi/2} 0 0"/>
+        <axis xyz="0 0 1"/>
+    </joint>
+
+
+
+</robot>

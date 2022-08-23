@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+
+
+import rospy
+
+from geometry_msgs.msg import Twist, Vector3, Quaternion
+from gazebo_msgs.msg import LinkStates
+from tf_conversions import transformations
+
+from lqr import control, control_koop
+"""
+Node publishes a cmd_vel command to balance the pole
+Publishers:
+    cmd_vel is of type geometry_msgs/Twist
+
+
+Subscribers:
+    gazebo/link_states
+    
+"""
+
+
+class Control():
+    def __init__(self):
+        self.m_cart = rospy.get_param('m_cart')
+        self.m_rod = rospy.get_param('m_rod')
+        self.m_ball = rospy.get_param('m_ball')
+        self.m_wheel = rospy.get_param('m_wheel')
+        self.l_rod = rospy.get_param('l_rod')
+        self.r_ball = rospy.get_param('r_ball')
+        self.r_wheel = rospy.get_param('r_wheel')
+        self.dt = rospy.get_param('dt')
+        
+        self.cart_pos = 0
+
+        self.link_angle_quat = [0, 0, 0, 1]
+        self.link_angle_rpy = [0, 0, 0]
+        self.timer = rospy.Timer(rospy.Duration(self.dt),self.timer_callback)
+        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10000)
+        self.link_sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.link_state_callback)
+        self.controller = control.Quad_control((self.m_cart+2*self.m_wheel),self.m_ball,10.0,self.l_rod+self.r_ball)
+        
+        
+        
+    
+    def timer_callback(self,event):
+        """
+        Callback for geometry_msgs/Twist publishing
+        Args:
+            None
+        """ 
+        v = self.controller.compute_cmd(self.cart_pos,self.cart_vel,self.link_angle_rpy[1],self.rod_vel, self.r_wheel, self.dt)
+        # print('v:  ', v)
+        # control_koop.test_koop()
+        # if abs(self.link_angle_rpy[1])<0.025:
+        #     v = 0.0
+        self.cmd_pub.publish(  Twist(Vector3(v,0,0),Vector3(0,0,0))  )
+
+            
+    def link_state_callback(self,data):
+        """
+        The pose callback subscribes to turtle1/pose, and publishes it in the odom format
+        Args:
+            data (Gazebo/LinkStates):
+                string[]: names of links
+                pose[]: pose of links
+                twist[]: twist of links
+        """
+        
+        self.link_angle_quat = [data.pose[5].orientation.x, data.pose[5].orientation.y, data.pose[5].orientation.z, data.pose[5].orientation.w]
+        self.link_angle_rpy = transformations.euler_from_quaternion(self.link_angle_quat) #source 03/31: https://github.com/ros/geometry/issues/109        
+        # rospy.loginfo(self.link_angle_rpy)
+        # self.controller.return_K()
+        # print('m_cart: ', self.m_cart)
+        
+        self.cart_pos = data.pose[2].position.x
+        self.cart_vel = data.twist[2].linear.x
+        self.rod_vel = data.twist[2].angular.y
+    
+
+
+
+
+
+def main():
+    """
+    Main function
+    """
+    rospy.init_node('control_norm')
+    control = Control()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
+    
+    
+    
+    
+    

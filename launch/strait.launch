@@ -1,0 +1,15 @@
+<launch>
+
+    <rosparam file="$(find cartpole)/config/turtle_params.yaml" command="load" />
+
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch" />
+
+    <include file="$(find apriltag_ros)/launch/continuous_detection.launch" />
+
+    <node pkg="cartpole" type="rsense_data" name="rsense_data" output="screen">     
+    </node>
+
+    <!-- <node pkg="cartpole" type="train_turtle_ground_straight" name="train_turtle_ground_straight" output="screen">    
+    </node> -->
+    
+</launch>

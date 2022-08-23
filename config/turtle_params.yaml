@@ -1,0 +1,10 @@
+r_wheel: 0.033
+track_width: 0.16
+collision_radius: 0.25
+motor_cmd_max: 256
+motor_cmd_to_radsec: 0.024
+encoder_ticks_to_rad:  0.001534
+
+
+dt: 0.002
+freq: 500

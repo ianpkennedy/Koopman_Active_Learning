@@ -1,0 +1,206 @@
+#!/usr/bin/env python
+
+
+import rospy
+
+
+
+from nuturtlebot_msgs.msg import SensorData
+from nuturtlebot_msgs.msg import WheelCommands
+from sensor_msgs.msg import JointState
+
+from geometry_msgs.msg import Twist
+from lqr.koop_train import Turtle_Koop, Turtle_Koop_Vel, Turtle_Koop_Poly, Turtle_Koop_Vel_X, Turtle_Koop_X_Xdot_Poly4, Turtle_Koop_X_Xdot_Poly3, Turtle_Koop_X_Xdot_Poly3_Theta_Input, Turtle_Koop_X_Xdot_Poly1_Theta_Input_XY
+from cartpole.msg import Data
+
+class Ground_Turtle():
+    def __init__(self):
+        self.iteration = 1
+ 
+        self.first = True
+        self.first_j = True
+        self.first_x = True
+        self.first_y = True
+
+        self.speed = 0.1
+
+        self.dt = rospy.get_param('dt')
+        self.encoder_ticks_to_rad = rospy.get_param('encoder_ticks_to_rad')
+        self.motor_cmd_to_radsec = rospy.get_param('motor_cmd_to_radsec')
+        
+        
+        self.ltheta = 0.
+        self.rtheta = 0.
+        
+        self.x = 0.
+        self.y = 0.
+        
+        self.lvel = 0. #3.03#6.67  #3.0303
+        self.rvel = 0. #3.03#6.67  #3.03     
+        self.xdot = 0.
+        self.ydot = 0.
+
+        self.encoder_sub =  rospy.Subscriber('/sensor_data', SensorData, self.encoder_callback)
+        self.x_data_sub =  rospy.Subscriber('/x_data', Data, self.x_data_callback)
+        self.xdot_data_sub =  rospy.Subscriber('/xdot_data', Data, self.xdot_data_callback)        
+
+        self.y_data_sub =  rospy.Subscriber('/y_data', Data, self.y_data_callback)
+        self.ydot_data_sub =  rospy.Subscriber('/ydot_data', Data, self.ydot_data_callback)    
+
+        self.cmd_sub = rospy.Subscriber('/wheel_cmd', WheelCommands, self.cmd_callback)
+        self.joint_sub = rospy.Subscriber('/blue/joint_states', JointState, self.joint_callback)
+        
+        self.twist_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
+        self.data_l_pub = rospy.Publisher('/l_data', Data, queue_size=10000)
+        self.data_r_pub = rospy.Publisher('/r_data', Data, queue_size=10000)
+        self.data_lv_pub = rospy.Publisher('lv_data', Data, queue_size=10000)
+        self.data_rv_pub = rospy.Publisher('rv_data', Data, queue_size=10000)
+        self.data_cam_x_pub = rospy.Publisher('cam_x_data', Data, queue_size=10000)
+        self.data_cam_y_pub = rospy.Publisher('cam_y_data', Data, queue_size=10000)
+
+        self.koopman = Turtle_Koop_X_Xdot_Poly1_Theta_Input_XY(self.dt, 6, 2, self.x, self.y, self.xdot, self.ydot, self.lvel, self.rvel, self.ltheta, self.rtheta)
+
+
+        self.l_first = 0.
+        self.r_first = 0.
+        self.iteration = 1
+
+
+    def joint_callback(self,data):
+        """Get JointState
+
+        Args:
+            data (float): turtlebot joint states
+        """
+        self.lvel = data.velocity[0]
+        self.rvel = data.velocity[1]
+        
+        if self.first_j == True:
+            self.l_first_j = data.position[0]
+            self.r_first_j = data.position[1]
+            self.first_j = False
+            
+        self.data_lv_pub.publish(self.lvel)
+        self.data_rv_pub.publish(self.rvel)
+        
+        self.data_l_pub.publish(data.position[0]-self.l_first_j)
+        self.data_r_pub.publish(data.position[1]-self.r_first_j)
+
+        self.data_cam_x_pub.publish(self.x) 
+        self.data_cam_y_pub.publish(self.y)
+ 
+        
+        
+        
+    def encoder_callback(self,data):
+        """encoder turtlebot data
+
+        Args:
+            data (nuturtlebot_msg): encoder data from turtlebot
+        """
+        if self.iteration % 921 == 0:
+            self.speed*= -1
+        
+        t = Twist()
+        t.linear.x = self.speed #0.1 #0.22
+        t.linear.y = 0.
+        t.linear.z = 0.
+        
+        t.angular.x = 0.
+        t.angular.y = 0.
+        t.angular.z = 0. #0.5
+        
+        self.twist_pub.publish(t)
+        
+        # self.ltheta_old = self.ltheta
+        # self.rtheta_old = self.rtheta
+        
+        self.ltheta = data.left_encoder
+        self.rtheta = data.right_encoder   
+        
+        if self.first == True:
+            self.l_first = self.ltheta
+            self.r_first = self.rtheta
+            self.first = False
+
+        
+        self.iteration+=1
+        
+        # print('xdot: ', self.xdot)  
+        
+        self.koopman.train_model(self.x, self.y, self.xdot, self.ydot, self.lvel, self.rvel,  (self.ltheta - self.l_first)*self.encoder_ticks_to_rad, (self.rtheta - self.r_first)*self.encoder_ticks_to_rad)
+        self.koopman.calculateK()
+        
+        
+    def x_data_callback(self, data):
+        """Camera x position data for robot
+
+        Args:
+            data (float): x position in meters
+        """
+        self.x = data.data
+
+        if self.first_x == True:
+            self.x_first = self.x
+            self.first_x = False
+            
+        self.x -= self.x_first
+        print('self.x ', self.x)
+
+
+    def xdot_data_callback(self, data):
+        """Camera x velocity data for robot
+
+        Args:
+            data (float): x speed in meters/s
+        """
+        print('xdotcallback: ', data.data)  
+        self.xdot = data.data
+        
+        
+    def y_data_callback(self, data):
+        """Camera x position data for robot
+
+        Args:
+            data (float): x position in meters
+        """
+        self.y = data.data
+
+        if self.first_y == True:
+            self.y_first = self.y
+            self.first_y = False
+            
+        self.y -= self.y_first
+        print('self.y ', self.y)
+
+    def ydot_data_callback(self, data):
+        """Camera y velcoity data for robot
+
+        Args:
+            data (float): x speed in meters/s
+        """
+        print('ydotcallback: ', data.data)  
+        self.ydot = data.data
+        
+    def cmd_callback(self,data):
+        """motor command callback
+
+        Args:
+            data (WheelCommands): input commands to system
+        """
+        
+        self.lcmd = float(data.left_velocity)
+        self.rcmd = float(data.right_velocity)
+        
+        
+        
+def main():
+    """
+    Main function
+    """
+    rospy.init_node('ground_turtle')
+    control = Ground_Turtle()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,18 @@
+m_cart: 1.0
+l_cart: 0.9
+w_cart: 1.0
+t_cart: 0.1
+
+m_wheel: 0.01
+r_wheel: 0.1
+l_wheel: 0.5
+
+m_rod: 0.000001
+r_rod: 0.01
+l_rod: 0.5
+
+m_ball: 0.25
+r_ball: 0.25
+
+dt: 0.001
+freq: 1000

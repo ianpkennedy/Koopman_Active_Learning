@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+
+<robot name="cartpoleslide_gazebo" xmlns:xacro="https://ros.org/wiki/xacro">
+    <xacro:property name="yaml" value="$(find cartpole)/config/cart_params.yaml"/>
+    <xacro:property name="param" value="${xacro.load_yaml(yaml)}"/>
+    <xacro:property name="freq" value="${param['freq']}"/>
+
+    <gazebo reference="platform">
+     <material>Gazebo/Green</material>
+     <mu1>0</mu1>
+     <mu2>0</mu2>
+    </gazebo>
+    
+
+    <gazebo reference="rod">
+     <material>Gazebo/Blue</material>
+     <mu1>0</mu1>
+     <mu2>0</mu2>
+    </gazebo>
+
+    <gazebo reference="ball">
+        <material>Gazebo/Red</material>
+        <mu1>0</mu1>
+        <mu2>0</mu2>
+       </gazebo>
+
+    <gazebo>
+        <plugin name="gazebo_ros_force" filename="libgazebo_ros_force.so">
+        <alwaysOn>true</alwaysOn>
+        <update>1000</update>
+        <updateRate>1000.0</updateRate>
+        <bodyName>platform</bodyName>
+        <topicName>force</topicName>
+        </plugin>
+    </gazebo> 
+
+</robot>
